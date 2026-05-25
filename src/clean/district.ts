@@ -13,10 +13,13 @@ const VALID_DISTRICTS: ReadonlySet<string> = new Set(
 
 const DISTRICT_ALIASES: ReadonlyMap<string, string> = new Map([
   ["St. Georg", "St.Georg"],
+  ["St. Pauli", "St.Pauli"],
   ["Neugraben", "Neugraben-Fischbek"],
+  ["Fischbek", "Neugraben-Fischbek"],
   ["Altona", "Altona-Altstadt"],
   ["Altstadt", "Hamburg-Altstadt"],
   ["Barmbek", "Barmbek-Süd"],
+  ["Gartenstadt", "Barmbek-Nord"],
 ]);
 
 const LOCATION_REGEX = /^\d{5}\s+(?:Hamburg[-\s]+)?(.+?)\s*$/;
