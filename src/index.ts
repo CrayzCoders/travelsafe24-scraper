@@ -8,7 +8,7 @@ import type { Listing, ListingsFile } from "./types";
 const OUTPUT_FILE = path.join(process.cwd(), "data/listings.json");
 
 async function main() {
-  const maxPages = Number(process.env.SCRAPE_MAX_PAGES ?? "30");
+  const maxPages = Number(process.env.SCRAPE_MAX_PAGES ?? "70");
   const headless = process.env.SCRAPE_HEADLESS !== "false";
 
   console.log(`[scraper] start (maxPages=${maxPages}, headless=${headless})`);
