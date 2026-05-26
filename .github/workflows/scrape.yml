@@ -4,11 +4,17 @@ on:
   schedule:
     - cron: "0 */12 * * *"
   workflow_dispatch:
+    inputs:
+      attempt:
+        description: "Retry attempt number (internal — leave as 1 for manual runs)"
+        default: "1"
+        required: false
 
 permissions:
   contents: read
   pages: write
   id-token: write
+  actions: write
 
 concurrency:
   group: pages
@@ -47,6 +53,27 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+
+  retry-on-failure:
+    needs: scrape
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-dispatch workflow on a fresh runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTEMPT: ${{ github.event.inputs.attempt || '1' }}
+          MAX_ATTEMPTS: "3"
+          RETRY_DELAY_SECONDS: "30"
+        run: |
+          if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+            echo "Reached max attempts ($MAX_ATTEMPTS). Not retrying."
+            exit 0
+          fi
+          NEXT=$((ATTEMPT + 1))
+          echo "Scrape failed on attempt $ATTEMPT. Waiting ${RETRY_DELAY_SECONDS}s then re-dispatching as attempt $NEXT..."
+          sleep "$RETRY_DELAY_SECONDS"
+          gh workflow run scrape.yml --repo "${{ github.repository }}" --ref "${{ github.ref_name }}" -f attempt="$NEXT"
 
   deploy:
     needs: scrape
