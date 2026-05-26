@@ -73,7 +73,7 @@ jobs:
           NEXT=$((ATTEMPT + 1))
           echo "Scrape failed on attempt $ATTEMPT. Waiting ${RETRY_DELAY_SECONDS}s then re-dispatching as attempt $NEXT..."
           sleep "$RETRY_DELAY_SECONDS"
-          gh workflow run scrape.yml --ref "${{ github.ref_name }}" -f attempt="$NEXT"
+          gh workflow run scrape.yml --repo "${{ github.repository }}" --ref "${{ github.ref_name }}" -f attempt="$NEXT"
 
   deploy:
     needs: scrape
