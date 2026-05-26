@@ -11,7 +11,9 @@ async function main() {
   const maxPages = Number(process.env.SCRAPE_MAX_PAGES ?? "70");
   const headless = process.env.SCRAPE_HEADLESS !== "false";
 
-  console.log(`[scraper] start (maxPages=${maxPages}, headless=${headless})`);
+  console.log(
+    `[scraper] start (maxPagesPerBezirk=${maxPages}, headless=${headless})`,
+  );
 
   const cards = await scrapeKleinanzeigen({ maxPages, headless });
   console.log(`[scraper] scraped ${cards.length} unique cards`);

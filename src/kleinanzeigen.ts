@@ -7,7 +7,23 @@ import { createCursor } from "ghost-cursor-playwright";
 import type { RawCard } from "./types";
 
 const BASE_URL = "https://www.kleinanzeigen.de";
-const SEARCH_PATH = "/s-wohnung-mieten/hamburg/c203l9409";
+const CATEGORY = "c203";
+const HAMBURG_LOCATION = "l9409";
+
+const BEZIRKE: ReadonlyArray<{ slug: string; name: string }> = [
+  { slug: "hamburg-mitte", name: "Hamburg-Mitte" },
+  { slug: "altona", name: "Altona" },
+  { slug: "eimsbuettel", name: "Eimsbüttel" },
+  { slug: "hamburg-nord", name: "Hamburg-Nord" },
+  { slug: "wandsbek", name: "Wandsbek" },
+  { slug: "bergedorf", name: "Bergedorf" },
+  { slug: "hamburg-harburg", name: "Harburg" },
+];
+
+function buildSearchUrl(bezirkSlug: string, page: number): string {
+  const path = `/s-wohnung-mieten/${bezirkSlug}/${CATEGORY}${HAMBURG_LOCATION}`;
+  return page === 1 ? `${BASE_URL}${path}` : `${BASE_URL}/seite:${page}${path}`;
+}
 
 function resolveChromiumPath(): string | undefined {
   if (process.env.SCRAPE_CHROMIUM_PATH) return process.env.SCRAPE_CHROMIUM_PATH;
@@ -144,38 +160,53 @@ export async function scrapeKleinanzeigen(
   const collected = new Map<string, RawCard>();
 
   try {
-    for (let i = 1; i <= options.maxPages; i++) {
-      const url =
-        i === 1
-          ? `${BASE_URL}${SEARCH_PATH}`
-          : `${BASE_URL}/seite:${i}${SEARCH_PATH}`;
-      console.log(`[kleinanzeigen] page ${i} → ${url}`);
+    outer: for (let b = 0; b < BEZIRKE.length; b++) {
+      const bezirk = BEZIRKE[b];
+      const beforeCount = collected.size;
+      console.log(
+        `[kleinanzeigen] bezirk ${b + 1}/${BEZIRKE.length}: ${bezirk.name}`,
+      );
 
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+      for (let i = 1; i <= options.maxPages; i++) {
+        const url = buildSearchUrl(bezirk.slug, i);
+        console.log(`[kleinanzeigen]   page ${i} → ${url}`);
 
-      const blocked = await page.locator("text=Zugriff verweigert").count();
-      if (blocked > 0) {
-        console.warn("[kleinanzeigen] blocked — stopping early");
-        break;
+        await page.goto(url, {
+          waitUntil: "domcontentloaded",
+          timeout: 30000,
+        });
+
+        const blocked = await page.locator("text=Zugriff verweigert").count();
+        if (blocked > 0) {
+          console.warn("[kleinanzeigen]   blocked — stopping early");
+          break outer;
+        }
+
+        await page
+          .waitForSelector("article.aditem", { timeout: 15000 })
+          .catch(() => null);
+
+        const moves = 2 + Math.floor(Math.random() * 2);
+        await cursor.actions.randomMove(moves).catch(() => null);
+
+        await randomDelay(800, 1800);
+
+        const cards = await extractListingsFromPage(page);
+        console.log(`[kleinanzeigen]   page ${i}: ${cards.length} cards`);
+        for (const card of cards) {
+          if (!collected.has(card.id)) collected.set(card.id, card);
+        }
+
+        if (cards.length === 0) break;
+        if (i < options.maxPages) await randomDelay(3000, 6000);
       }
 
-      await page
-        .waitForSelector("article.aditem", { timeout: 15000 })
-        .catch(() => null);
+      const added = collected.size - beforeCount;
+      console.log(
+        `[kleinanzeigen] bezirk ${bezirk.name}: +${added} new (total ${collected.size})`,
+      );
 
-      const moves = 2 + Math.floor(Math.random() * 2);
-      await cursor.actions.randomMove(moves).catch(() => null);
-
-      await randomDelay(800, 1800);
-
-      const cards = await extractListingsFromPage(page);
-      console.log(`[kleinanzeigen] page ${i}: ${cards.length} cards`);
-      for (const card of cards) {
-        if (!collected.has(card.id)) collected.set(card.id, card);
-      }
-
-      if (cards.length === 0) break;
-      if (i < options.maxPages) await randomDelay(3000, 6000);
+      if (b < BEZIRKE.length - 1) await randomDelay(5000, 9000);
     }
   } finally {
     await browser.close();
