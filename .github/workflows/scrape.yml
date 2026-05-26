@@ -43,7 +43,7 @@ jobs:
       - name: Run scraper
         env:
           SCRAPE_MAX_PAGES: ${{ secrets.SCRAPE_MAX_PAGES }}
-        run: pnpm scrape
+        run: pnpm scrap
 
       - name: Prepare Pages artifact
         run: |
