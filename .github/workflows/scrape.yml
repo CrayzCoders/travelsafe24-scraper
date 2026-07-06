@@ -1,8 +1,6 @@
 name: Scrape and publish listings
 
 on:
-  schedule:
-    - cron: "0 */12 * * *"
   workflow_dispatch:
     inputs:
       attempt:
